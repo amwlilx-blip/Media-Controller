@@ -61,7 +61,8 @@ class App(ctk.CTk):
 
         # Иконка окна с задержкой, чтобы перебить стандартную от CustomTkinter
         icon_path = resource_path("my_icon.ico")
-        self.after(200, lambda: self.iconbitmap(icon_path))
+        if os.path.exists(icon_path):
+            self.after(200, lambda: self.iconbitmap(icon_path))
 
         # Цвета (под вашу фиолетовую тему)
         BG_CARD = "#241640"
@@ -165,8 +166,25 @@ class App(ctk.CTk):
 
     def start_hotkeys(self):
         def listener():
+            # Отслеживаем зажатые модификаторы
+            modifier_keys = {
+                keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r, keyboard.Key.alt_gr,
+                keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r,
+                keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r,
+                keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r,
+            }
+            pressed_modifiers = set()
+
             def on_press(key):
                 try:
+                    if key in modifier_keys:
+                        pressed_modifiers.add(key)
+                        return
+
+                    # Если зажат хоть один модификатор — бинд не срабатывает
+                    if pressed_modifiers:
+                        return
+
                     if key == keyboard.Key.f2:
                         self.after(0, self.prev_track)
                     elif key == keyboard.Key.f3:
@@ -176,7 +194,14 @@ class App(ctk.CTk):
                 except Exception:
                     pass
 
-            with keyboard.Listener(on_press=on_press) as l:
+            def on_release(key):
+                try:
+                    if key in modifier_keys:
+                        pressed_modifiers.discard(key)
+                except Exception:
+                    pass
+
+            with keyboard.Listener(on_press=on_press, on_release=on_release) as l:
                 l.join()
 
         t = threading.Thread(target=listener, daemon=True)
